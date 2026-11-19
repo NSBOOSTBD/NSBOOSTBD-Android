@@ -17,7 +17,6 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
-import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -144,6 +143,37 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun isGoogleAuthUrl(url: String): Boolean {
+        val lower = url.lowercase()
+        val uri = Uri.parse(lower)
+        val host = uri.host ?: ""
+        val path = uri.path ?: ""
+
+        if (host == "accounts.google.com" || host.endsWith(".accounts.google.com")) {
+            return true
+        }
+        if (host.contains("google") && (path.contains("oauth") || path.contains("signin") || path.contains("auth"))) {
+            return true
+        }
+        if ((host == "nsboostbd.com" || host.endsWith(".nsboostbd.com")) &&
+            (path.contains("google") || lower.contains("provider=google") || lower.contains("auth/google"))
+        ) {
+            return true
+        }
+        return false
+    }
+
+    private fun openInExternalBrowser(url: String): Boolean {
+        return try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+            true
+        } catch (e: Exception) {
+            Toast.makeText(this, "Cannot open browser", Toast.LENGTH_SHORT).show()
+            false
+        }
+    }
+
     private fun setupWebView() {
         val cookieManager = CookieManager.getInstance()
         configureWebViewSettings(webView, cookieManager)
@@ -163,6 +193,14 @@ class MainActivity : AppCompatActivity() {
             }
 
             override fun onPageStarted(view: WebView?, url: String?, favicon: Bitmap?) {
+                val currentUrl = url ?: ""
+                if (isGoogleAuthUrl(currentUrl)) {
+                    view?.stopLoading()
+                    progressBar.visibility = View.GONE
+                    swipeRefresh.isRefreshing = false
+                    openInExternalBrowser(currentUrl)
+                    return
+                }
                 super.onPageStarted(view, url, favicon)
                 progressBar.visibility = View.VISIBLE
                 progressBar.progress = 0
@@ -247,9 +285,20 @@ class MainActivity : AppCompatActivity() {
                     }
 
                     override fun onPageStarted(v: WebView?, url: String?, favicon: Bitmap?) {
+                        val currentUrl = url ?: ""
+                        if (isGoogleAuthUrl(currentUrl)) {
+                            closePopupWindow(reloadMain = false)
+                            openInExternalBrowser(currentUrl)
+                            return
+                        }
                         super.onPageStarted(v, url, favicon)
                         progressBar.visibility = View.VISIBLE
                         progressBar.progress = 10
+                        val currentHost = Uri.parse(currentUrl).host?.lowercase() ?: ""
+                        if (currentHost == "nsboostbd.com" || currentHost.endsWith(".nsboostbd.com")) {
+                            closePopupWindow(reloadMain = false)
+                            webView.loadUrl(currentUrl)
+                        }
                     }
 
                     override fun onPageFinished(v: WebView?, url: String?) {
@@ -268,10 +317,6 @@ class MainActivity : AppCompatActivity() {
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 progressBar.progress = newProgress
                 progressBar.visibility = if (newProgress == 100) View.GONE else View.VISIBLE
-            }
-
-            override fun onPermissionRequest(request: PermissionRequest?) {
-                request?.grant(request.resources)
             }
 
             override fun onShowFileChooser(
@@ -311,6 +356,12 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handlePopupUrl(popupUrl: String): Boolean {
+        if (isGoogleAuthUrl(popupUrl)) {
+            closePopupWindow(reloadMain = false)
+            openInExternalBrowser(popupUrl)
+            return true
+        }
+
         val uri = Uri.parse(popupUrl)
         val scheme = uri.scheme?.lowercase()
         val host = uri.host?.lowercase() ?: ""
@@ -338,6 +389,11 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleUrl(url: String): Boolean {
+        if (isGoogleAuthUrl(url)) {
+            openInExternalBrowser(url)
+            return true
+        }
+
         val uri = Uri.parse(url)
         val scheme = uri.scheme?.lowercase()
 
