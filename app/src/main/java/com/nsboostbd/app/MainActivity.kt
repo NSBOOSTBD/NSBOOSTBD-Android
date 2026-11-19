@@ -10,11 +10,11 @@ import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
+import android.os.Message
 import android.view.KeyEvent
 import android.view.View
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
-import android.webkit.URLUtil
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -42,6 +42,8 @@ class MainActivity : AppCompatActivity() {
 
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
     private val websiteUrl = "https://nsboostbd.com/"
+    private val chromeUserAgent =
+        "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -64,9 +66,7 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Splash theme থেকে main theme-এ যাওয়ার জন্য আগে setTheme করতে হবে
         setTheme(R.style.Theme_NSBOOSTBD)
-
         super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -83,7 +83,11 @@ class MainActivity : AppCompatActivity() {
         setupBackPress()
 
         if (isNetworkAvailable()) {
-            loadWebsite()
+            if (savedInstanceState == null) {
+                loadWebsite()
+            } else {
+                webView.restoreState(savedInstanceState)
+            }
         } else {
             showError()
         }
@@ -91,26 +95,27 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun setupWebView() {
+        val cookieManager = CookieManager.getInstance()
+        cookieManager.setAcceptCookie(true)
+        cookieManager.setAcceptThirdPartyCookies(webView, true)
+
         val settings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.databaseEnabled = true
         settings.cacheMode = WebSettings.LOAD_DEFAULT
-        settings.mixedContentMode = WebSettings.MIXED_CONTENT_NEVER_ALLOW
-        settings.allowFileAccess = false
-        settings.allowContentAccess = false
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+        settings.allowFileAccess = true
+        settings.allowContentAccess = true
         settings.setSupportZoom(true)
         settings.builtInZoomControls = true
         settings.displayZoomControls = false
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
         settings.mediaPlaybackRequiresUserGesture = true
-        settings.javaScriptCanOpenWindowsAutomatically = false
-        settings.setSupportMultipleWindows(false)
-
-        // Cookie management for session persistence
-        CookieManager.getInstance().setAcceptCookie(true)
-        CookieManager.getInstance().setAcceptThirdPartyCookies(webView, true)
+        settings.javaScriptCanOpenWindowsAutomatically = true
+        settings.setSupportMultipleWindows(true)
+        settings.userAgentString = chromeUserAgent
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(
@@ -137,8 +142,7 @@ class MainActivity : AppCompatActivity() {
                 super.onPageFinished(view, url)
                 progressBar.visibility = View.GONE
                 swipeRefresh.isRefreshing = false
-                // Persist cookies
-                CookieManager.getInstance().flush()
+                cookieManager.flush()
             }
 
             override fun onReceivedError(
@@ -154,13 +158,63 @@ class MainActivity : AppCompatActivity() {
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onCreateWindow(
+                view: WebView?,
+                isDialog: Boolean,
+                isUserGesture: Boolean,
+                resultMsg: Message?
+            ): Boolean {
+                val popupWebView = WebView(this@MainActivity).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    settings.databaseEnabled = true
+                    settings.setSupportMultipleWindows(true)
+                    settings.javaScriptCanOpenWindowsAutomatically = true
+                    settings.loadWithOverviewMode = true
+                    settings.useWideViewPort = true
+                    settings.userAgentString = chromeUserAgent
+                    cookieManager.setAcceptThirdPartyCookies(this, true)
+                }
+
+                popupWebView.webViewClient = object : WebViewClient() {
+                    override fun shouldOverrideUrlLoading(
+                        v: WebView?,
+                        req: WebResourceRequest?
+                    ): Boolean {
+                        val popupUrl = req?.url?.toString() ?: return false
+                        val uri = Uri.parse(popupUrl)
+                        val host = uri.host?.lowercase() ?: ""
+                        return if (isAllowedInternalHost(host)) {
+                            webView.loadUrl(popupUrl)
+                            true
+                        } else {
+                            handleUrl(popupUrl)
+                        }
+                    }
+
+                    @Deprecated("Deprecated in Java")
+                    override fun shouldOverrideUrlLoading(v: WebView?, url: String?): Boolean {
+                        val popupUrl = url ?: return false
+                        val uri = Uri.parse(popupUrl)
+                        val host = uri.host?.lowercase() ?: ""
+                        return if (isAllowedInternalHost(host)) {
+                            webView.loadUrl(popupUrl)
+                            true
+                        } else {
+                            handleUrl(popupUrl)
+                        }
+                    }
+                }
+
+                val transport = resultMsg?.obj as? WebView.WebViewTransport
+                transport?.webView = popupWebView
+                resultMsg?.sendToTarget()
+                return true
+            }
+
             override fun onProgressChanged(view: WebView?, newProgress: Int) {
                 progressBar.progress = newProgress
-                if (newProgress == 100) {
-                    progressBar.visibility = View.GONE
-                } else {
-                    progressBar.visibility = View.VISIBLE
-                }
+                progressBar.visibility = if (newProgress == 100) View.GONE else View.VISIBLE
             }
 
             override fun onShowFileChooser(
@@ -187,7 +241,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        webView.setDownloadListener(DownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
+        webView.setDownloadListener(DownloadListener { url, _, _, _, _ ->
             try {
                 val intent = Intent(Intent.ACTION_VIEW).apply {
                     data = Uri.parse(url)
@@ -199,17 +253,10 @@ class MainActivity : AppCompatActivity() {
         })
     }
 
-    private fun handleUrl(url: String): Boolean {
-        // Keep navigation inside the domain + allow Google OAuth flow
-        val uri = Uri.parse(url)
-        val host = uri.host?.lowercase() ?: return false
-
-        // Allow NSBOOSTBD domain
-        if (host.contains("nsboostbd.com") || host.endsWith("nsboostbd.com")) {
-            return false // Load inside WebView
+    private fun isAllowedInternalHost(host: String): Boolean {
+        if (host == "nsboostbd.com" || host.endsWith(".nsboostbd.com")) {
+            return true
         }
-
-        // Allow Google authentication domains (required for Sign in with Google)
         val googleDomains = listOf(
             "accounts.google.com",
             "google.com",
@@ -219,18 +266,27 @@ class MainActivity : AppCompatActivity() {
             "youtube.com",
             "ggpht.com"
         )
-        if (googleDomains.any { host == it || host.endsWith(".$it") }) {
-            return false // Keep Google login flow inside WebView
+        return googleDomains.any { host == it || host.endsWith(".$it") }
+    }
+
+    private fun handleUrl(url: String): Boolean {
+        val uri = Uri.parse(url)
+        val scheme = uri.scheme?.lowercase()
+        if (scheme == "http" || scheme == "https") {
+            val host = uri.host?.lowercase() ?: return false
+            if (isAllowedInternalHost(host)) {
+                return false
+            }
         }
 
-        // Everything else opens in external browser
-        try {
+        return try {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             startActivity(intent)
+            true
         } catch (e: Exception) {
             Toast.makeText(this, "Cannot open link", Toast.LENGTH_SHORT).show()
+            true
         }
-        return true
     }
 
     private fun setupSwipeRefresh() {
@@ -300,6 +356,11 @@ class MainActivity : AppCompatActivity() {
             val networkInfo = connectivityManager.activeNetworkInfo
             return networkInfo != null && networkInfo.isConnected
         }
+    }
+
+    override fun onSaveInstanceState(outState: Bundle) {
+        super.onSaveInstanceState(outState)
+        webView.saveState(outState)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
