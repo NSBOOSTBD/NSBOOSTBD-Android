@@ -44,7 +44,6 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     private val websiteUrl = "https://nsboostbd.com/"
-
     private val allowedHost = "nsboostbd.com"
 
     private val fileChooserLauncher =
@@ -52,7 +51,8 @@ class MainActivity : AppCompatActivity() {
             ActivityResultContracts.StartActivityForResult()
         ) { result ->
 
-            val callback = filePathCallback ?: return@registerForActivityResult
+            val callback = filePathCallback
+                ?: return@registerForActivityResult
 
             val results =
                 if (result.resultCode == Activity.RESULT_OK) {
@@ -91,47 +91,39 @@ class MainActivity : AppCompatActivity() {
         swipeRefresh = binding.swipeRefresh
 
         configureCookies()
-
         setupWebView()
         setupSwipeRefresh()
         setupRetryButton()
         setupBackButton()
 
         if (isNetworkAvailable()) {
-
             if (savedInstanceState == null) {
                 loadWebsite()
             } else {
                 webView.restoreState(savedInstanceState)
             }
-
         } else {
             showError()
         }
     }
 
-    // ---------------- COOKIE SETTINGS ----------------
+    // COOKIE SETTINGS
 
     private fun configureCookies() {
-
         val cookies = CookieManager.getInstance()
-
         cookies.setAcceptCookie(true)
         cookies.setAcceptThirdPartyCookies(webView, true)
-
     }
 
-    // ---------------- WEBVIEW SETTINGS ----------------
+    // WEBVIEW SETTINGS
 
     @SuppressLint("SetJavaScriptEnabled")
     private fun configureWebView(target: WebView) {
 
         target.settings.apply {
-
             javaScriptEnabled = true
             domStorageEnabled = true
             databaseEnabled = true
-
             cacheMode = WebSettings.LOAD_DEFAULT
 
             mixedContentMode =
@@ -152,12 +144,10 @@ class MainActivity : AppCompatActivity() {
             mediaPlaybackRequiresUserGesture = true
         }
 
-        target.setBackgroundColor(
-            android.graphics.Color.WHITE
-        )
+        target.setBackgroundColor(android.graphics.Color.WHITE)
     }
 
-    // ---------------- MAIN WEBVIEW ----------------
+    // MAIN WEBVIEW
 
     private fun setupWebView() {
 
@@ -169,9 +159,7 @@ class MainActivity : AppCompatActivity() {
                 view: WebView?,
                 request: WebResourceRequest?
             ): Boolean {
-
                 val uri = request?.url ?: return false
-
                 return handleUrl(uri)
             }
 
@@ -180,7 +168,6 @@ class MainActivity : AppCompatActivity() {
                 view: WebView?,
                 url: String?
             ): Boolean {
-
                 return url?.let {
                     handleUrl(Uri.parse(it))
                 } ?: false
@@ -191,12 +178,10 @@ class MainActivity : AppCompatActivity() {
                 url: String?,
                 favicon: Bitmap?
             ) {
-
                 super.onPageStarted(view, url, favicon)
 
                 binding.progressBar.visibility = View.VISIBLE
                 binding.progressBar.progress = 0
-
                 hideError()
             }
 
@@ -204,12 +189,10 @@ class MainActivity : AppCompatActivity() {
                 view: WebView?,
                 url: String?
             ) {
-
                 super.onPageFinished(view, url)
 
                 binding.progressBar.visibility = View.GONE
                 swipeRefresh.isRefreshing = false
-
                 CookieManager.getInstance().flush()
             }
 
@@ -218,7 +201,6 @@ class MainActivity : AppCompatActivity() {
                 request: WebResourceRequest?,
                 error: WebResourceError?
             ) {
-
                 super.onReceivedError(view, request, error)
 
                 if (request?.isForMainFrame == true) {
@@ -233,18 +215,13 @@ class MainActivity : AppCompatActivity() {
                 view: WebView?,
                 newProgress: Int
             ) {
-
                 binding.progressBar.progress = newProgress
 
                 binding.progressBar.visibility =
-                    if (newProgress >= 100) {
-                        View.GONE
-                    } else {
-                        View.VISIBLE
-                    }
+                    if (newProgress >= 100) View.GONE
+                    else View.VISIBLE
             }
 
-            // Handle Google Sign-In and other popup windows
             override fun onCreateWindow(
                 view: WebView?,
                 isDialog: Boolean,
@@ -257,7 +234,6 @@ class MainActivity : AppCompatActivity() {
                 closePopupWindow(false)
 
                 val popup = WebView(this@MainActivity)
-
                 configureWebView(popup)
 
                 val cookies = CookieManager.getInstance()
@@ -265,7 +241,6 @@ class MainActivity : AppCompatActivity() {
                 cookies.setAcceptThirdPartyCookies(popup, true)
 
                 val container = FrameLayout(this@MainActivity)
-
                 container.setBackgroundColor(
                     android.graphics.Color.WHITE
                 )
@@ -289,9 +264,7 @@ class MainActivity : AppCompatActivity() {
                         view: WebView?,
                         request: WebResourceRequest?
                     ): Boolean {
-
                         val uri = request?.url ?: return false
-
                         return handlePopupUrl(uri)
                     }
 
@@ -300,7 +273,6 @@ class MainActivity : AppCompatActivity() {
                         view: WebView?,
                         url: String?
                     ): Boolean {
-
                         return url?.let {
                             handlePopupUrl(Uri.parse(it))
                         } ?: false
@@ -311,9 +283,7 @@ class MainActivity : AppCompatActivity() {
                         url: String?,
                         favicon: Bitmap?
                     ) {
-
                         super.onPageStarted(view, url, favicon)
-
                         binding.progressBar.visibility = View.VISIBLE
                     }
 
@@ -321,7 +291,6 @@ class MainActivity : AppCompatActivity() {
                         view: WebView?,
                         url: String?
                     ) {
-
                         super.onPageFinished(view, url)
 
                         binding.progressBar.visibility = View.GONE
@@ -339,15 +308,11 @@ class MainActivity : AppCompatActivity() {
                         view: WebView?,
                         newProgress: Int
                     ) {
-
                         binding.progressBar.progress = newProgress
 
                         binding.progressBar.visibility =
-                            if (newProgress >= 100) {
-                                View.GONE
-                            } else {
-                                View.VISIBLE
-                            }
+                            if (newProgress >= 100) View.GONE
+                            else View.VISIBLE
                     }
 
                     override fun onShowFileChooser(
@@ -355,7 +320,6 @@ class MainActivity : AppCompatActivity() {
                         callback: ValueCallback<Array<Uri>>?,
                         params: FileChooserParams?
                     ): Boolean {
-
                         return openFileChooser(callback, params)
                     }
                 }
@@ -379,7 +343,6 @@ class MainActivity : AppCompatActivity() {
                 callback: ValueCallback<Array<Uri>>?,
                 params: FileChooserParams?
             ): Boolean {
-
                 return openFileChooser(callback, params)
             }
         }
@@ -387,7 +350,14 @@ class MainActivity : AppCompatActivity() {
         setupDownloads()
     }
 
-    // ---------------- URL HANDLING ----------------
+    // GOOGLE AUTHENTICATION URL
+
+    private fun isGoogleAuthUrl(uri: Uri): Boolean {
+        val host = uri.host?.lowercase() ?: return false
+        return host == "accounts.google.com"
+    }
+
+    // URL HANDLING
 
     private fun handleUrl(uri: Uri): Boolean {
 
@@ -395,13 +365,16 @@ class MainActivity : AppCompatActivity() {
 
         if (scheme == "https" || scheme == "http") {
 
+            if (isGoogleAuthUrl(uri)) {
+                closePopupWindow(false)
+                return openExternal(uri)
+            }
+
             val host = uri.host?.lowercase() ?: ""
 
-            // Keep Google and website authentication in WebView.
             if (
                 host == allowedHost ||
                 host.endsWith(".$allowedHost") ||
-                host == "accounts.google.com" ||
                 host.endsWith(".google.com") ||
                 host.endsWith(".googleapis.com") ||
                 host.endsWith(".gstatic.com")
@@ -409,8 +382,7 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
 
-            openExternal(uri)
-            return true
+            return openExternal(uri)
         }
 
         return openExternal(uri)
@@ -422,12 +394,16 @@ class MainActivity : AppCompatActivity() {
 
         if (scheme == "https" || scheme == "http") {
 
+            if (isGoogleAuthUrl(uri)) {
+                closePopupWindow(false)
+                return openExternal(uri)
+            }
+
             val host = uri.host?.lowercase() ?: ""
 
             if (
                 host == allowedHost ||
                 host.endsWith(".$allowedHost") ||
-                host == "accounts.google.com" ||
                 host.endsWith(".google.com") ||
                 host.endsWith(".googleapis.com") ||
                 host.endsWith(".gstatic.com")
@@ -435,21 +411,19 @@ class MainActivity : AppCompatActivity() {
                 return false
             }
 
-            openExternal(uri)
-            return true
+            return openExternal(uri)
         }
 
         return openExternal(uri)
     }
 
+    // OPEN EXTERNAL LINKS
+
     private fun openExternal(uri: Uri): Boolean {
 
         return try {
-
             val intent = Intent(Intent.ACTION_VIEW, uri)
-
             startActivity(intent)
-
             true
 
         } catch (e: ActivityNotFoundException) {
@@ -464,7 +438,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- POPUP MANAGEMENT ----------------
+    // POPUP MANAGEMENT
 
     private fun closePopupWindow(reloadMain: Boolean = false) {
 
@@ -475,7 +449,6 @@ class MainActivity : AppCompatActivity() {
         activePopupContainer = null
 
         container?.let {
-
             (it.parent as? ViewGroup)?.removeView(it)
         }
 
@@ -487,7 +460,6 @@ class MainActivity : AppCompatActivity() {
         }
 
         CookieManager.getInstance().flush()
-
         binding.progressBar.visibility = View.GONE
 
         if (reloadMain) {
@@ -495,7 +467,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- FILE UPLOAD ----------------
+    // FILE UPLOAD
 
     private fun openFileChooser(
         callback: ValueCallback<Array<Uri>>?,
@@ -503,7 +475,6 @@ class MainActivity : AppCompatActivity() {
     ): Boolean {
 
         filePathCallback?.onReceiveValue(null)
-
         filePathCallback = callback
 
         return try {
@@ -515,7 +486,6 @@ class MainActivity : AppCompatActivity() {
                 }
 
             fileChooserLauncher.launch(intent)
-
             true
 
         } catch (e: Exception) {
@@ -532,56 +502,45 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- DOWNLOAD ----------------
+    // DOWNLOAD
 
     private fun setupDownloads() {
-
         webView.setDownloadListener(
             DownloadListener { url, _, _, _, _ ->
-
                 openExternal(Uri.parse(url))
             }
         )
     }
 
-    // ---------------- SWIPE REFRESH ----------------
+    // SWIPE REFRESH
 
     private fun setupSwipeRefresh() {
 
         swipeRefresh.setColorSchemeColors(
-            ContextCompat.getColor(
-                this,
-                R.color.primary
-            )
+            ContextCompat.getColor(this, R.color.primary)
         )
 
         swipeRefresh.setOnRefreshListener {
 
             if (isNetworkAvailable()) {
-
                 webView.reload()
-
             } else {
-
                 swipeRefresh.isRefreshing = false
                 showError()
             }
         }
     }
 
-    // ---------------- RETRY BUTTON ----------------
+    // RETRY BUTTON
 
     private fun setupRetryButton() {
 
         binding.btnRetry.setOnClickListener {
 
             if (isNetworkAvailable()) {
-
                 hideError()
                 loadWebsite()
-
             } else {
-
                 Toast.makeText(
                     this,
                     "No internet connection",
@@ -591,7 +550,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- BACK BUTTON ----------------
+    // BACK BUTTON
 
     private fun setupBackButton() {
 
@@ -612,11 +571,8 @@ class MainActivity : AppCompatActivity() {
                         }
 
                     } else if (webView.canGoBack()) {
-
                         webView.goBack()
-
                     } else {
-
                         finish()
                     }
                 }
@@ -624,7 +580,7 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    // ---------------- NETWORK ----------------
+    // NETWORK
 
     private fun isNetworkAvailable(): Boolean {
 
@@ -654,7 +610,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // ---------------- ERROR SCREEN ----------------
+    // ERROR SCREEN
 
     private fun showError() {
 
@@ -670,33 +626,28 @@ class MainActivity : AppCompatActivity() {
     private fun hideError() {
 
         binding.errorLayout.visibility = View.GONE
-
         webView.visibility = View.VISIBLE
         swipeRefresh.isEnabled = true
     }
 
-    // ---------------- LOAD WEBSITE ----------------
+    // LOAD WEBSITE
 
     private fun loadWebsite() {
-
         webView.loadUrl(websiteUrl)
     }
 
-    // ---------------- SAVE STATE ----------------
+    // SAVE STATE
 
     override fun onSaveInstanceState(outState: Bundle) {
-
         webView.saveState(outState)
-
         super.onSaveInstanceState(outState)
     }
 
-    // ---------------- LIFECYCLE ----------------
+    // LIFECYCLE
 
     override fun onPause() {
 
         activePopupWebView?.onPause()
-
         webView.onPause()
 
         CookieManager.getInstance().flush()
@@ -709,7 +660,6 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
 
         activePopupWebView?.onResume()
-
         webView.onResume()
     }
 
