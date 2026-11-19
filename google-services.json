@@ -1,0 +1,28 @@
+{
+  "project_info": {
+    "project_number": "796759987098",
+    "project_id": "nsboostbd-9d652",
+    "storage_bucket": "nsboostbd-9d652.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:796759987098:android:777dcc30980e3dd0dc6023",
+        "android_client_info": {
+          "package_name": "com.nsboostbd.app"
+        }
+      },
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBG3dhCkiRZ9p-pfMtIEHKU0MoWrU_gFs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
