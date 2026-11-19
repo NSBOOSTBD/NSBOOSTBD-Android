@@ -64,10 +64,10 @@ class MainActivity : AppCompatActivity() {
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-
-        // Apply main theme after splash
+        // Splash theme থেকে main theme-এ যাওয়ার জন্য আগে setTheme করতে হবে
         setTheme(R.style.Theme_NSBOOSTBD)
+
+        super.onCreate(savedInstanceState)
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
