@@ -45,6 +45,7 @@ class MainActivity : AppCompatActivity() {
     private var activePopupContainer: FrameLayout? = null
     private var activePopupWebView: WebView? = null
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
+    private var openedExternalAuth = false
 
     private val websiteUrl = "https://nsboostbd.com/"
     private val mobileUserAgent =
@@ -165,10 +166,12 @@ class MainActivity : AppCompatActivity() {
 
     private fun openInExternalBrowser(url: String): Boolean {
         return try {
+            openedExternalAuth = true
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
             startActivity(intent)
             true
         } catch (e: Exception) {
+            openedExternalAuth = false
             Toast.makeText(this, "Cannot open browser", Toast.LENGTH_SHORT).show()
             false
         }
@@ -526,6 +529,10 @@ class MainActivity : AppCompatActivity() {
         super.onResume()
         activePopupWebView?.onResume()
         webView.onResume()
+        if (openedExternalAuth) {
+            openedExternalAuth = false
+            webView.reload()
+        }
     }
 
     override fun onDestroy() {
