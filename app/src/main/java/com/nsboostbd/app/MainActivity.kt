@@ -200,22 +200,37 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun handleUrl(url: String): Boolean {
-        // Keep navigation inside the domain
+        // Keep navigation inside the domain + allow Google OAuth flow
         val uri = Uri.parse(url)
         val host = uri.host?.lowercase() ?: return false
 
-        return if (host.contains("nsboostbd.com") || host.endsWith("nsboostbd.com")) {
-            false // Load inside WebView
-        } else {
-            // External links open in browser
-            try {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(this, "Cannot open link", Toast.LENGTH_SHORT).show()
-            }
-            true
+        // Allow NSBOOSTBD domain
+        if (host.contains("nsboostbd.com") || host.endsWith("nsboostbd.com")) {
+            return false // Load inside WebView
         }
+
+        // Allow Google authentication domains (required for Sign in with Google)
+        val googleDomains = listOf(
+            "accounts.google.com",
+            "google.com",
+            "googleapis.com",
+            "gstatic.com",
+            "googleusercontent.com",
+            "youtube.com",
+            "ggpht.com"
+        )
+        if (googleDomains.any { host == it || host.endsWith(".$it") }) {
+            return false // Keep Google login flow inside WebView
+        }
+
+        // Everything else opens in external browser
+        try {
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Cannot open link", Toast.LENGTH_SHORT).show()
+        }
+        return true
     }
 
     private fun setupSwipeRefresh() {

@@ -10,4 +10,6 @@
     <color name="text_primary">#212121</color>
     <color name="text_secondary">#757575</color>
     <color name="splash_background">#0D47A1</color>
+    <!-- Adaptive icon background - matches logo blue -->
+    <color name="ic_launcher_background">#00AEEF</color>
 </resources>
