@@ -17,6 +17,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.webkit.CookieManager
 import android.webkit.DownloadListener
+import android.webkit.PermissionRequest
 import android.webkit.ValueCallback
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceError
@@ -47,8 +48,8 @@ class MainActivity : AppCompatActivity() {
     private var filePathCallback: ValueCallback<Array<Uri>>? = null
 
     private val websiteUrl = "https://nsboostbd.com/"
-    private val chromeUserAgent =
-        "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Mobile Safari/537.36"
+    private val mobileUserAgent =
+        "Mozilla/5.0 (Linux; Android 14; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Mobile Safari/537.36"
 
     private val fileChooserLauncher = registerForActivityResult(
         ActivityResultContracts.StartActivityForResult()
@@ -116,10 +117,10 @@ class MainActivity : AppCompatActivity() {
         settings.displayZoomControls = false
         settings.loadWithOverviewMode = true
         settings.useWideViewPort = true
-        settings.mediaPlaybackRequiresUserGesture = true
+        settings.mediaPlaybackRequiresUserGesture = false
         settings.javaScriptCanOpenWindowsAutomatically = true
         settings.setSupportMultipleWindows(true)
-        settings.userAgentString = chromeUserAgent
+        settings.userAgentString = mobileUserAgent
     }
 
     private fun closePopupWindow(reloadMain: Boolean = true) {
@@ -269,6 +270,10 @@ class MainActivity : AppCompatActivity() {
                 progressBar.visibility = if (newProgress == 100) View.GONE else View.VISIBLE
             }
 
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                request?.grant(request.resources)
+            }
+
             override fun onShowFileChooser(
                 webView: WebView?,
                 filePathCallback: ValueCallback<Array<Uri>>?,
@@ -320,43 +325,32 @@ class MainActivity : AppCompatActivity() {
         }
 
         return try {
-            val intent = Intent(Intent.ACTION_VIEW, uri)
+            val intent = if (scheme == "intent") {
+                Intent.parseUri(popupUrl, Intent.URI_INTENT_SCHEME)
+            } else {
+                Intent(Intent.ACTION_VIEW, uri)
+            }
             startActivity(intent)
-            closePopupWindow(reloadMain = true)
             true
         } catch (e: Exception) {
             false
         }
     }
 
-    private fun isAllowedInternalHost(host: String): Boolean {
-        if (host == "nsboostbd.com" || host.endsWith(".nsboostbd.com")) {
-            return true
-        }
-        val googleDomains = listOf(
-            "accounts.google.com",
-            "google.com",
-            "googleapis.com",
-            "gstatic.com",
-            "googleusercontent.com",
-            "youtube.com",
-            "ggpht.com"
-        )
-        return googleDomains.any { host == it || host.endsWith(".$it") }
-    }
-
     private fun handleUrl(url: String): Boolean {
         val uri = Uri.parse(url)
         val scheme = uri.scheme?.lowercase()
+
         if (scheme == "http" || scheme == "https") {
-            val host = uri.host?.lowercase() ?: return false
-            if (isAllowedInternalHost(host)) {
-                return false
-            }
+            return false
         }
 
         return try {
-            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            val intent = if (scheme == "intent") {
+                Intent.parseUri(url, Intent.URI_INTENT_SCHEME)
+            } else {
+                Intent(Intent.ACTION_VIEW, uri)
+            }
             startActivity(intent)
             true
         } catch (e: Exception) {
